@@ -93,13 +93,6 @@ def find_and_connect(self, cancel_event=None):
 - 採用漸進式逾時策略
 - 提供詳細連線嘗試日誌
 
-#### 協議握手流程
-
-1. 建立 Socket 連線
-2. Ping 確認（"PING"/"PONG" 交換）
-3. 認證與功能協商
-4. 建立指令通道
-
 ---
 
 ## 檔案傳輸協議
