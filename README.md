@@ -1,104 +1,89 @@
-# 藍牙檔案傳輸系統
-## 技術文件
+# Bluetooth File Transfer System - Technical Report
 
-### 執行摘要
+## Executive Summary
 
-本文件記錄了一個跨平台藍牙檔案傳輸系統，能夠在 Linux 與 Android 裝置之間實現無縫的檔案交換。系統由基於 PyQt6 的 Linux 應用程式以及基於 Kivy 的 Android 應用程式組成，使用 RFCOMM 藍牙協議以實現可靠的資料傳輸。
+This report documents the development of a cross-platform Bluetooth file transfer system enabling seamless file exchange between Linux and Android devices. The system consists of a PyQt6-based application for Linux and a Kivy-based application for Android, utilizing RFCOMM Bluetooth protocol for reliable data transmission.
 
----
+## System Architecture
 
-## 系統架構
+### Overview
+The system implements a peer-to-peer architecture where the Linux application initiates connections and transfers files to the Android application. Communication occurs over Bluetooth using the Serial Port Profile (SPP) with RFCOMM protocol.
 
-### 概覽
+### Key Components
+- **Linux Application**: PyQt6 GUI application with Bluetooth device discovery and file management
+- **Android Application**: Kivy-based application with file storage and export capabilities
+- **Protocol**: Custom binary protocol for file transfers and directory synchronization
+- **Storage**: Android app-specific internal storage with organized directory structure
 
-系統採用點對點架構，由 Linux 應用程式發起連線並將檔案傳送至 Android 裝置。通訊透過藍牙序列埠配置檔（SPP）使用 RFCOMM 協議進行。
+## Linux Application
 
-### 主要組件
+### Core Architecture
 
-- **Linux 應用程式**：基於 PyQt6 的 GUI 應用程式，具備藍牙裝置偵測及檔案管理功能
-- **Android 應用程式**：基於 Kivy 的應用程式，提供檔案儲存與匯出功能
-- **協議**：自訂二進位檔案傳輸及目錄同步協議
-- **儲存**：Android 應用程式專用內部儲存，採結構化目錄管理
-
----
-
-## Linux 應用程式架構
-
-### 核心類別
-
-#### BluetoothScanner 類別
+#### BluetoothScanner Class
 ```python
 class BluetoothScanner(QObject):
 ```
+- Implements PyQt6-based Bluetooth device discovery
+- Uses `QBluetoothDeviceDiscoveryAgent` for scanning nearby devices
+- Provides real-time device discovery with signal-based communication
+- Automatically filters and displays discoverable Bluetooth devices
 
-**職責：**
-- 實作 PyQt6 的藍牙裝置偵測
-- 使用 QBluetoothDeviceDiscoveryAgent 掃描附近裝置
-- 提供即時裝置偵測並透過訊號進行溝通
-- 自動過濾並顯示可偵測的藍牙裝置
+**Key Features:**
+- Asynchronous device scanning with timeout handling
+- Duplicate device filtering based on MAC addresses
+- Thread-safe GUI updates using Qt signals
+- Auto-stop functionality to prevent resource exhaustion
 
-**主要功能：**
-- 非同步裝置掃描，並具備逾時處理
-- 根據 MAC 位址過濾重複裝置
-- 使用 Qt 訊號確保執行緒安全的 GUI 更新
-- 自動停止掃描以避免資源耗盡
-
-#### BluetoothClientGUI 類別
+#### BluetoothClientGUI Class
 ```python
 class BluetoothClientGUI(QMainWindow):
 ```
+- Main application window with comprehensive file transfer interface
+- Implements three-state connection management (disconnected/connecting/connected)
+- Provides real-time logging with color-coded message types
+- Supports directory synchronization operations
 
-**職責：**
-- 主應用程式視窗，提供完整的檔案傳輸介面
-- 實作三狀態連線管理（已斷線/連線中/已連線）
-- 提供即時日誌顯示，訊息類型以顏色區分
-- 支援目錄同步操作
+**GUI Components:**
+- Device selection list with MAC address validation
+- Connection status indicators with visual feedback
+- File transfer progress monitoring
+- Command input interface for remote application interaction
 
-**GUI 元件：**
-- 裝置選擇清單，具備 MAC 位址驗證
-- 連線狀態指示器與視覺回饋
-- 檔案傳輸進度監控
-- 遠端指令輸入介面
-
-#### BluetoothFileClient 類別
+#### BluetoothFileClient Class
 ```python
 class BluetoothFileClient:
 ```
+- Handles all Bluetooth communication protocols
+- Implements robust connection establishment with port scanning
+- Manages directory synchronization with integrity checking
+- Supports directory scanning and batch file operations
 
-**職責：**
-- 負責所有藍牙通訊協議
-- 實作可靠的連線建立與埠掃描
-- 管理目錄同步並檢查檔案完整性
-- 支援目錄掃描及批次檔案操作
+**Transfer Protocol:**
 
-**傳輸協議功能：**
-- 目錄同步流程
-- 目錄掃描與檔案列舉
-- 批次檔案驗證與過濾
-- 提供使用者確認對話框，列出詳細檔案清單
-- 依序傳輸檔案並處理錯誤
+**Directory Synchronization**
+- Directory scanning and file enumeration
+- Batch file validation and filtering
+- User confirmation dialogs with detailed file lists
+- Sequential file transfer with error handling
 
-### 連線管理
+### Connection Management
 
-#### 埠偵測流程
+#### Port Discovery Process
 ```python
 def find_and_connect(self, cancel_event=None):
     # Try common RFCOMM ports first (1, 2, 3, then scan others)
     port_order = [1, 2, 3] + list(range(4, 31))
 ```
+- Prioritizes commonly used RFCOMM ports
+- Implements cancellation support for user interruption
+- Uses progressive timeout strategy
+- Provides detailed connection attempt logging
 
-**功能：**
-- 優先嘗試常用的 RFCOMM 埠
-- 支援使用者中斷操作
-- 採用漸進式逾時策略
-- 提供詳細連線嘗試日誌
 
----
 
-## 檔案傳輸協議
+### File Transfer Protocol
 
-### 目錄同步協議
-
+#### Directory Sync Protocol
 ```
 1. Send "DIRSYNC" header (8 bytes)
 2. Wait for "READY" response
@@ -114,146 +99,268 @@ def find_and_connect(self, cancel_event=None):
    - Wait for "SAVED" confirmation
 ```
 
-### 錯誤處理與恢復
+### Error Handling and Recovery
+- Connection timeout management with progressive backoff
+- File corruption detection through size verification
+- User cancellation support during transfers
+- Comprehensive error logging and user feedback
 
-- 連線逾時管理與漸進重試
-- 檔案損壞檢測（透過資料大小驗證）
-- 傳輸過程可由使用者取消
-- 提供完整錯誤日誌與使用者回饋
+## Android Application
 
----
+### Core Architecture
 
-## Android 應用程式架構
-
-### 核心類別
-
-#### MyGridLayout 類別
+#### MyGridLayout Class
 ```python
 class MyGridLayout(Widget):
 ```
+- Main UI controller managing Bluetooth communication
+- Implements file storage and organization systems
+- Provides export functionality using Android Storage Access Framework
+- Handles concurrent transfer operations with threading
 
-**職責：**
-- 主 UI 控制器，管理藍牙通訊
-- 實作檔案儲存與管理系統
-- 提供使用 Android Storage Access Framework 的匯出功能
-- 支援多工傳輸操作
-
-### 藍牙伺服器實作
-
+#### Bluetooth Server Implementation
 ```python
 def start_bluetooth_server(self):
     # Standard UUID for SPP (Serial Port Profile)
     MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 ```
+- Uses Android Bluetooth API through PyJNIus
+- Implements RFCOMM socket listening
+- Handles multiple connection attempts
+- Provides automatic service discovery
 
-**功能：**
-- 透過 PyJNIus 使用 Android 藍牙 API
-- 實作 RFCOMM socket 監聽
-- 支援多次連線嘗試
-- 提供自動服務偵測
+### File Storage System
 
-### 檔案儲存系統
-
-#### 內部儲存管理
+#### Internal Storage Management
 ```python
 def initialize_storage(self):
     context = mActivity.getApplicationContext()
     files_dir = context.getFilesDir()
     self.app_storage_path = files_dir.getAbsolutePath()
 ```
+- Utilizes Android app-specific internal storage
+- Creates organized directory structure for received files
+- Maintains in-memory file catalog for quick access
+- Implements automatic cleanup and organization
 
-**功能：**
-- 使用 Android 應用程式專用內部儲存
-- 建立結構化目錄以管理接收的檔案
-- 維護記憶體中的檔案目錄以加速存取
-- 自動整理檔案並維持目錄結構
+#### Storage Features
+- **Directory Organization**: Files organized by source directory name
+- **Metadata Tracking**: File size, type, and path information
+- **Export Capabilities**: Integration with Android Storage Access Framework
+- **Storage Optimization**: Automatic file indexing and cataloging
 
-#### 儲存功能
+### Transfer Handling
 
-- **目錄組織**：依來源目錄名稱分類檔案
-- **Metadata 追蹤**：紀錄檔案大小、類型及路徑
-- **匯出功能**：整合 Android Storage Access Framework
-- **儲存優化**：自動索引檔案並建立目錄結構
+#### Protocol Implementation
+The Android application implements the complementary side of the transfer protocols:
 
-### 傳輸處理
+1. **Connection Acceptance**
+   - Listens on RFCOMM socket
+   - Handles connection confirmation handshake
+   - Establishes bidirectional communication
 
-#### 協議實作
+2. **File Reception**
+   - Validates incoming directory metadata
+   - Implements streaming data reception for multiple files
+   - Provides real-time progress feedback for batch operations
+   - Ensures data integrity verification across all files
 
-Android 應用程式負責配合 Linux 端的傳輸協議：
+3. **Directory Synchronization**
+   - Clears existing directory contents
+   - Receives multiple files sequentially
+   - Maintains transfer state consistency
+   - Provides batch operation feedback
 
-**接受連線**
-- 在 RFCOMM socket 上監聽
-- 完成連線確認握手
-- 建立雙向通訊
+### User Interface Features
 
-**接收檔案**
-- 驗證接收目錄的 metadata
-- 支援多檔案串流接收
-- 提供批次操作即時進度回饋
-- 確保所有檔案完整性
-
-**目錄同步**
-- 清空現有目錄內容
-- 依序接收多個檔案
-- 維持傳輸狀態一致
-- 提供批次操作回饋
-
-### 使用者介面功能
-
-#### 指令系統
+#### Command System
 ```python
 def send_message(self):
     # Built-in commands: list, clear, show, export, shutdown
 ```
+- Interactive command interface for file management
+- Quick action buttons for common operations
+- Real-time log display with color coding
+- Status indicators for connection and transfer states
 
-**功能：**
-- 提供互動式檔案管理指令介面
-- 快速操作按鈕執行常用操作
-- 即時日誌顯示，訊息以顏色區分
-- 連線與傳輸狀態指示
-
-#### 匯出功能
+#### Export Functionality
 ```python
 def create_file_with_extension(filetype, default_name="received_file"):
     intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
 ```
+- Integration with Android Storage Access Framework
+- Support for multiple file types with appropriate MIME types
+- User-friendly file selection and naming
+- Direct export to user-accessible storage locations
 
-**功能：**
-- 整合 Android Storage Access Framework
-- 支援多種檔案類型與 MIME type
-- 使用者可自訂檔名
-- 直接匯出至使用者可存取的儲存位置
+### Threading and Concurrency
 
----
+The Linux application implements a sophisticated multi-threading architecture to ensure responsive user interface while handling intensive Bluetooth operations:
 
-## 執行緒與併發處理
+#### Main Thread (GUI Thread)
+- Handles all PyQt6 GUI updates and user interactions
+- Processes Qt signals for thread-safe communication
+- Manages device selection and connection status updates
+- Responds to user input and button clicks
 
-**Linux 端執行緒管理：**
-- **GUI 執行緒**：處理 PyQt6 GUI 更新與使用者互動
-- **藍牙掃描執行緒**：非同步裝置掃描，透過 Qt 訊號更新 GUI
-- **連線執行緒**：執行埠掃描與連線建立，支援取消操作
-- **指令接收執行緒**：持續監聽 Android 裝置指令，管理傳輸狀態
-- **檔案傳輸執行緒**：獨立處理檔案傳送，避免 UI 凍結
+#### Bluetooth Scanner Thread
+```python
+self.bluetooth_scanner = BluetoothScanner(gui_callback=self)
+```
+- Runs asynchronous device discovery operations
+- Uses Qt signals to communicate found devices back to main thread
+- Implements timeout mechanisms to prevent indefinite scanning
+- Automatically stops scanning when connection is established
 
----
+#### Connection Thread
+```python
+self.connection_thread = threading.Thread(target=self.connect_to_server, daemon=True)
+self.connection_thread.start()
+```
+- Handles the connection establishment process
+- Performs port scanning without blocking the UI
+- Supports user cancellation through threading events
+- Uses `connection_cancelled` event for graceful termination
 
-## 建置系統與部署
+#### Command Receiver Thread
+```python
+receiver_thread = threading.Thread(target=self.client.receive_commands, daemon=True)
+receiver_thread.start()
+```
+- Continuously listens for incoming commands from Android device
+- Processes directory sync requests and file requests
+- Implements transfer state management to pause command processing during active transfers
+- Uses thread-safe logging through Qt signals
 
-### 虛擬環境設定
+#### File Transfer Threads
+```python
+threading.Thread(target=self.send_file_worker, args=(filepath, ext), daemon=True).start()
+threading.Thread(target=self.client.execute_directory_sync, args=(directory_path, files_to_send), daemon=True).start()
+```
+- Dedicated threads for file sending operations
+- Prevents UI freezing during large file transfers
+- Implements progress tracking and error handling
+- Automatically re-enables UI controls upon completion
 
+#### Thread Synchronization Mechanisms
+
+**Transfer State Management**
+```python
+self.transfer_in_progress = False
+self.transfer_lock = threading.Lock()
+self.pause_commands = False
+```
+- Thread-safe transfer state tracking
+- Prevents concurrent transfer operations
+- Coordinates between command receiver and transfer threads
+
+**Connection Cancellation**
+```python
+self.connection_cancelled = threading.Event()
+```
+- Allows user to cancel ongoing connection attempts
+- Provides clean shutdown of connection threads
+- Prevents resource leaks from abandoned connections
+
+**Qt Signal-Slot Communication**
+```python
+log_signal = pyqtSignal(str)
+status_signal = pyqtSignal(str)
+connection_status_signal = pyqtSignal(str)
+directory_sync_signal = pyqtSignal(str, list, list)
+```
+- Thread-safe communication between worker threads and GUI
+- Ensures all UI updates occur on the main thread
+- Prevents Qt threading violations and crashes
+
+#### Thread Safety Considerations
+- All GUI updates routed through Qt signals to main thread
+- File operations performed on background threads
+- Bluetooth operations isolated from UI thread
+- Proper cleanup of daemon threads on application exit
+
+## Build System and Deployment
+
+### Virtual Environment Setup
+
+Before building applications, it's essential to use virtual environments to isolate project dependencies. Many modern Linux distributions prohibit installing Python packages system-wide to prevent conflicts with system-managed packages. Virtual environments provide a clean, isolated space for project-specific dependencies.
+
+#### Creating a Virtual Environment
 ```bash
+# Create a new virtual environment
 python3 -m venv bluetooth_transfer_env
+
+# Activate the virtual environment
+# On Linux/macOS:
 source bluetooth_transfer_env/bin/activate
+
+# On Windows:
+bluetooth_transfer_env\Scripts\activate
+```
+
+#### Installing Project Dependencies
+```bash
+# With virtual environment activated
 pip install --upgrade pip
 pip install PyQt6
 pip install kivy
 pip install buildozer
 pip install pyinstaller
+```
+
+#### Deactivating Virtual Environment
+```bash
 deactivate
 ```
 
-### Android APK 建置 (Buildozer)
+Using virtual environments is particularly important on Linux distributions that enforce PEP 668 (externally managed environments), as they prevent direct installation of packages to the system Python environment. The virtual environment must remain activated throughout the build process for both Android APK and Linux executable generation.
 
+### Android APK Building with Buildozer
+
+Buildozer is a tool that automates the entire build process, downloading prerequisites like python-for-android, Android SDK, NDK, and other required tools. It manages a file named buildozer.spec in your application directory, describing your application requirements and settings such as title, icon, included modules etc.
+
+#### Installation (Linux Ubuntu 20.04/22.04)
+
+Buildozer is tested on Python 3.8 and above but may work on earlier versions, back to Python 3.3.
+
+**System Dependencies Installation**
+First, install the system dependencies:
+
+```bash
+sudo apt update
+sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+```
+
+**Python Dependencies**
+Install Buildozer and required Python packages:
+
+```bash
+pip3 install --user --upgrade Cython==0.29.33 virtualenv
+pip3 install --user --upgrade buildozer
+```
+
+**Environment Setup**
+Add the following line at the end of your ~/.bashrc file:
+
+```bash
+export PATH=$PATH:~/.local/bin/
+```
+
+Then restart your terminal or run `source ~/.bashrc` to apply the changes.
+
+#### Quickstart Build Process
+
+**Project Initialization**
+Create a buildozer.spec file with:
+
+```bash
+buildozer init
+```
+
+**Configuration**
+Edit the buildozer.spec according to the Specifications. You should at least change the title, package.name and package.domain in the [app] section.
+
+For the Bluetooth File Transfer application:
 ```ini
 [app]
 title = Bluetooth File Server
@@ -261,28 +368,45 @@ package.name = bluetoothfileserver
 package.domain = org.example
 requirements = python3,kivy,pyjnius
 android.permissions = BLUETOOTH, BLUETOOTH_ADMIN, BLUETOOTH_CONNECT, BLUETOOTH_ADVERTISE, ACCESS_FINE_LOCATION, READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
+
+# Kivy version to use (must not exceed 1.9.1)
+osx.kivy_version = 1.9.1
 ```
+
+**Building the APK**
+Start an Android/debug build with:
 
 ```bash
 buildozer -v android debug
 ```
 
-### Linux 可執行檔建置 (PyInstaller)
+The first build will be slow, as it will download the Android SDK, NDK, and others tools needed for the compilation. Don't worry, those files will be saved in a global directory and will be shared across the different project you'll manage with Buildozer.
 
-```bash
-pyinstaller --hidden-import=PyQt6 --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtWidgets --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtBluetooth path/to/your/client.py -F
-```
+At the end, you should have an APK or AAB file in the bin/ directory.
 
----
+This straightforward process automates the complex Android build pipeline, handling SDK/NDK downloads, dependency management, and APK generation through simple command-line operations.
 
-## 結論
+### Linux Executable Building with PyInstaller
 
-此藍牙檔案傳輸系統展示了跨平台 Python 應用程式開發的可行性。Linux 端使用 PyQt6，Android 端使用 Kivy，提供原生體驗的 UI。自訂二進位協議確保資料可靠傳輸，而 Buildozer 與 PyInstaller 提供簡易的部署與發行流程。
+#### Build Process
+1. **Installation**
+   ```bash
+   pip install pyinstaller
+   ```
 
-### 解決的實務開發挑戰
+2. **Build Command**
+   ```bash
+   pyinstaller --hidden-import=PyQt6 --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtWidgets --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtBluetooth path/to/your/client.py -F
+   ```
 
-- UI 在檔案傳輸過程中保持響應
-- 藍牙資料可靠傳輸
-- 跨平台簡單部署
+#### Build Optimizations
+- **Hidden Imports**: Explicit inclusion of PyQt6.QtBluetooth module
+- **Bundle Optimization**: Single-file executable generation
+- **Resource Management**: Proper handling of Qt resources and plugins
+- **Platform Compatibility**: Linux-specific Bluetooth library integration
 
-系統架構清晰，可方便後續擴充功能。
+## Conclusion
+
+This Bluetooth file transfer system demonstrates effective cross-platform development using Python frameworks. The combination of PyQt6 for Linux and Kivy for Android provides robust, native-feeling applications on both platforms. The custom binary protocol ensures reliable data transfer, while the build systems (Buildozer and PyInstaller) enable easy distribution and deployment.
+
+The project demonstrates practical solutions for real-world development challenges including responsive user interfaces during file transfers, reliable data transmission over Bluetooth, and simplified deployment across different platforms. The straightforward architecture makes it easy to modify and extend functionality as needed.
